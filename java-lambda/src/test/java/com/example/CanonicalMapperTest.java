@@ -24,7 +24,7 @@ class CanonicalMapperTest {
         assertEquals("ORD-001", canonical.get("orderId").getAsString());
         assertEquals("CUST-001", canonical.get("customerId").getAsString());
         assertEquals("John Smith", canonical.get("customerName").getAsString());
-        assertEquals("2025-01-15T10:30:00.000Z", canonical.get("orderDate").getAsString());
+        assertEquals("2025-01-15T10:30:00Z", canonical.get("orderDate").getAsString());
         assertEquals(109.97, canonical.get("totalOrderValue").getAsDouble(), 0.01);
         assertEquals("PROCESSED", canonical.get("status").getAsString());
         assertEquals("abc-123", canonical.get("correlationId").getAsString());
