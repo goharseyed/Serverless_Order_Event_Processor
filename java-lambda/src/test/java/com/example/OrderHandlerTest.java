@@ -66,14 +66,13 @@ class OrderHandlerTest {
     }
 
     @Test
-    void shouldHandleMessageWithoutMetadata() {
+    void shouldThrowExceptionWhenMetadataMissing() {
         SQSEvent event = createSQSEvent(
             "{\"orderId\":\"ORD-003\",\"customerId\":\"CUST-003\",\"customerName\":\"bob\"," +
             "\"orderDate\":\"2025-03-10T08:00:00Z\",\"items\":[]}"
         );
 
-        assertDoesNotThrow(() -> handler.handleRequest(event, context));
-        verify(logger, atLeastOnce()).log(contains("CANONICAL_RECORD"));
+        assertThrows(RuntimeException.class, () -> handler.handleRequest(event, context));
     }
 
     @Test

@@ -27,19 +27,23 @@ public class OrderHandler implements RequestHandler<SQSEvent, Void> {
 
                 JsonObject orderJson = JsonParser.parseString(messageContent).getAsJsonObject();
 
-                String correlationId = "unknown";
+                String correlationId = null;
                 if (orderJson.has("metadata")
                         && orderJson.getAsJsonObject("metadata").has("correlationId")) {
                     correlationId = orderJson.getAsJsonObject("metadata").get("correlationId").getAsString();
                 }
 
-                log("INFO", "Message processed", correlationId,
-                        orderJson.has("orderId") ? orderJson.get("orderId").getAsString() : "unknown");
+                if (!orderJson.has("orderId") || !orderJson.has("customerId") || correlationId == null) {
+                    String missing = !orderJson.has("orderId") ? "orderId" :
+                                     !orderJson.has("customerId") ? "customerId" : "correlationId";
+                    throw new RuntimeException("Missing required field: " + missing);
+                }
+
+                log("INFO", "Message processed", correlationId, orderJson.get("orderId").getAsString());
 
                 String canonicalRecord = CanonicalMapper.mapToCanonical(orderJson);
 
-                log("INFO", "Transformation completed", correlationId,
-                        orderJson.has("orderId") ? orderJson.get("orderId").getAsString() : "unknown");
+                log("INFO", "Transformation completed", correlationId, orderJson.get("orderId").getAsString());
 
                 context.getLogger().log("CANONICAL_RECORD: " + canonicalRecord + "\n");
 
