@@ -87,8 +87,7 @@ Resources:
           ENVIRONMENT: !Ref Environment
       Policies:
         - SQSPollerPolicy:
-            QueueNames:
-              - !GetAtt OrderQueue.QueueName
+            QueueName: !GetAtt OrderQueue.QueueName
       Events:
         SQSEvent:
           Type: SQS
