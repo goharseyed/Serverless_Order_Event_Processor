@@ -1,0 +1,12 @@
+{
+  "orderId": "",
+  "customerId": "CUST-002",
+  "orderDate": "not-a-valid-date",
+  "items": [
+    {
+      "itemId": "ITEM-003",
+      "quantity": 0,
+      "price": -5.00
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+node_modules/
+target/
+*.class
+*.jar
+!java-lambda/target/*.jar
+.aws-sam/
+coverage/
+*.log

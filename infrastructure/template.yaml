@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless Order Event Processor
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+
+Resources:
+  OrderEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub order-events-topic-${Environment}
+
+  OrderQueueDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub order-queue-dlq-${Environment}
+      MessageRetentionPeriod: 1209600
+
+  OrderQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub order-queue-${Environment}
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt OrderQueueDLQ.Arn
+        maxReceiveCount: 3
+      VisibilityTimeout: 60
+
+  OrderQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref OrderEventsTopic
+      Protocol: sqs
+      Endpoint: !GetAtt OrderQueue.Arn
+
+  OrderQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref OrderQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt OrderQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref OrderEventsTopic
+
+  OrderValidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub order-validator-${Environment}
+      CodeUri: ../node-lambda/
+      Handler: src/handler.handler
+      Runtime: nodejs22.x
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref OrderEventsTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt OrderEventsTopic.TopicName
+
+  OrderProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub order-processor-${Environment}
+      CodeUri: ../java-lambda/
+      Handler: com.example.OrderHandler::handleRequest
+      Runtime: java21
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - SQSPollerPolicy:
+            QueueNames:
+              - !GetAtt OrderQueue.QueueName
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OrderQueue.Arn
+            BatchSize: 10
+
+Outputs:
+  OrderEventsTopicArn:
+    Description: SNS Topic ARN
+    Value: !Ref OrderEventsTopic
+  OrderQueueUrl:
+    Description: SQS Queue URL
+    Value: !Ref OrderQueue
+  OrderQueueDLQUrl:
+    Description: SQS Dead Letter Queue URL
+    Value: !Ref OrderQueueDLQ
+  OrderValidatorFunctionName:
+    Description: Node.js Lambda Function Name
+    Value: !Ref OrderValidatorFunction
+  OrderProcessorFunctionName:
+    Description: Java Lambda Function Name
+    Value: !Ref OrderProcessorFunction
